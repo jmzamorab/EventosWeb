@@ -1,10 +1,13 @@
 package es.upv.master.eventosweb;
 
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.v7.app.AlertDialog;
@@ -108,7 +111,7 @@ public class ActividadPrincipal extends AppCompatActivity {
         });
 
         navegador.setDownloadListener(new DownloadListener() {
-            public void onDownloadStart(final String url, String userAgent, String contentDisposition, String mimetype,long contentLength) {
+            public void onDownloadStart(final String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
                 AlertDialog.Builder builder =
                         new AlertDialog.Builder(ActividadPrincipal.this);
                 builder.setTitle("Descarga");
@@ -148,7 +151,12 @@ public class ActividadPrincipal extends AppCompatActivity {
                 dialogo.setMessage("Cargando...");
                 dialogo.setCancelable(true);
                 dialogo.show();
-                btnDetener.setEnabled(true);
+                if (comprobarConectividad()) {
+                    btnDetener.setEnabled(true);
+                } else {
+                    btnDetener.setEnabled(false);
+                }
+                //btnDetener.setEnabled(true);
             }
 
             @Override
@@ -169,6 +177,7 @@ public class ActividadPrincipal extends AppCompatActivity {
         });
 
         ActivityCompat.requestPermissions(ActividadPrincipal.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        ActivityCompat.requestPermissions(ActividadPrincipal.this, new String[]{android.Manifest.permission.ACCESS_NETWORK_STATE}, 2);
 
     }
 
@@ -177,15 +186,19 @@ public class ActividadPrincipal extends AppCompatActivity {
     }
 
     public void irPaginaAnterior(View v) {
-        if (navegador.canGoBack()) {
-            navegador.goBack();
-        } else {
-            super.onBackPressed();
+        if (comprobarConectividad()) {
+            if (navegador.canGoBack()) {
+                navegador.goBack();
+            } else {
+                super.onBackPressed();
+            }
         }
     }
 
     public void irPaginaSiguiente(View v) {
-        navegador.goForward();
+        if (comprobarConectividad()) {
+            navegador.goForward();
+        }
     }
 
     @Override
@@ -198,7 +211,28 @@ public class ActividadPrincipal extends AppCompatActivity {
                 }
                 return;
             }
+            case 2: {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                } else {
+                    Toast.makeText(ActividadPrincipal.this, "Permiso denegado para conocer el estado de la red.", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
         }
+    }
+
+    private boolean comprobarConectividad() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) this.getSystemService(
+                        Context.CONNECTIVITY_SERVICE);
+        NetworkInfo info = connectivityManager.getActiveNetworkInfo();
+        if ((info == null || !info.isConnected() || !info.isAvailable())) {
+            Toast.makeText(ActividadPrincipal.this,
+                    "Oops! No tienes conexión a internet",
+                    Toast.LENGTH_LONG).show();
+            return false;
+        }
+        return true;
     }
 
     private class DescargarFichero extends AsyncTask<URL, Integer, Long> {
@@ -261,7 +295,6 @@ public class ActividadPrincipal extends AppCompatActivity {
         }
 
     }
-
 
 
 }
